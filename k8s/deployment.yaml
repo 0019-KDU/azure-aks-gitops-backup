@@ -16,7 +16,7 @@ spec:
     spec:
       containers:
       - name: nextjs-app
-        image: chiradev/azure-aks-gitops-backup:latest
+        image: chiradev/nextjs-app:latest
         ports:
         - containerPort: 3000
         env:
