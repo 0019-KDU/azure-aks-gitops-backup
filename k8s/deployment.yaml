@@ -1,0 +1,31 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nextjs-app
+  labels:
+    app: nextjs-app
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: nextjs-app
+  template:
+    metadata:
+      labels:
+        app: nextjs-app
+    spec:
+      containers:
+      - name: nextjs-app
+        image: your-dockerhub-username/azure-aks-gitops-backup:latest
+        ports:
+        - containerPort: 3000
+        env:
+        - name: NODE_ENV
+          value: "production"
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "250m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
