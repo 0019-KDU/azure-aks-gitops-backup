@@ -19,7 +19,7 @@ spec:
     spec:
       containers:
       - name: system-monitor
-        image: YOUR_DOCKERHUB_USERNAME/system-monitor:latest
+        image: chiradev/nextjs-app:latest
         imagePullPolicy: Always
         ports:
         - name: http

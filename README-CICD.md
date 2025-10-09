@@ -28,7 +28,7 @@ Add these two secrets:
 
 | Secret Name | Value |
 |------------|-------|
-| `DOCKER_USERNAME` | Your Docker Hub username |
+| `DOCKER_USERNAME` | chiradev |
 | `DOCKER_PASSWORD` | Your Docker Hub access token |
 
 **How to get Docker Hub token:**
@@ -36,17 +36,11 @@ Add these two secrets:
 2. Go to Account Settings → Security → New Access Token
 3. Copy the token
 
-### 2. Update Docker Image Name
+### 2. Configuration Complete! ✅
 
-Edit `k8s/deployment.yaml` line 22:
+Docker image is already configured as: `chiradev/nextjs-app`
 
-```yaml
-# Change this line:
-image: YOUR_DOCKERHUB_USERNAME/system-monitor:latest
-
-# To your actual Docker Hub username:
-image: yourusername/system-monitor:latest
-```
+No additional changes needed!
 
 ## 🚀 That's It!
 
@@ -88,8 +82,8 @@ kubectl rollout history deployment/system-monitor -n system-monitor
 ## 🏷️ Image Tags
 
 Each build creates:
-- `yourusername/system-monitor:main-abc1234` (unique SHA tag)
-- `yourusername/system-monitor:latest` (always latest)
+- `chiradev/nextjs-app:main-abc1234` (unique SHA tag)
+- `chiradev/nextjs-app:latest` (always latest)
 
 ## 🛠️ Troubleshooting
 

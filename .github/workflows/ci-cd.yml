@@ -6,7 +6,7 @@ on:
       - main
 
 env:
-  DOCKER_IMAGE: ${{ secrets.DOCKER_USERNAME }}/system-monitor
+  DOCKER_IMAGE: chiradev/nextjs-app
 
 jobs:
   build-and-push:
@@ -48,7 +48,7 @@ jobs:
       - name: Update Kubernetes deployment manifest
         run: |
           # Update image tag in deployment.yaml
-          sed -i "s|image:.*system-monitor.*|image: ${{ env.DOCKER_IMAGE }}:${{ steps.meta.outputs.image_tag }}|g" k8s/deployment.yaml
+          sed -i "s|image:.*nextjs-app.*|image: ${{ env.DOCKER_IMAGE }}:${{ steps.meta.outputs.image_tag }}|g" k8s/deployment.yaml
 
       - name: Commit and push changes
         run: |
