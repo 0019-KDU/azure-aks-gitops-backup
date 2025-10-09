@@ -2,7 +2,6 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: system-monitor
-  namespace: system-monitor
   labels:
     app: system-monitor
     version: v1
