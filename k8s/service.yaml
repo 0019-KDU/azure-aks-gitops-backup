@@ -1,12 +1,17 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: nextjs-service
+  name: system-monitor
+  namespace: system-monitor
+  labels:
+    app: system-monitor
 spec:
-  type: LoadBalancer
+  type: ClusterIP
   selector:
-    app: nextjs-app
+    app: system-monitor
   ports:
-  - port: 80
+  - name: http
+    port: 80
     targetPort: 3000
     protocol: TCP
+  sessionAffinity: ClientIP

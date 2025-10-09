@@ -38,6 +38,19 @@ interface SystemData {
     all: number;
     running: number;
     blocked: number;
+    list?: Array<{
+      user: string;
+      pid: number;
+      cpu: number;
+      mem: number;
+      vsz: number;
+      rss: number;
+      tty: string;
+      stat: string;
+      start: string;
+      time: string;
+      command: string;
+    }>;
   };
 }
 
@@ -47,31 +60,78 @@ export default function SystemMonitor() {
   const [error, setError] = useState<string | null>(null);
   const [cpuHistory, setCpuHistory] = useState<number[]>([]);
   const [memoryHistory, setMemoryHistory] = useState<number[]>([]);
+  const [isRemote, setIsRemote] = useState(false);
+  const [showConnectionForm, setShowConnectionForm] = useState(false);
+  const [connectionDetails, setConnectionDetails] = useState({
+    host: '',
+    port: '22',
+    username: '',
+    password: '',
+    privateKey: '',
+    passphrase: ''
+  });
+
+  const fetchRemoteSystemData = async () => {
+    try {
+      const response = await fetch('/api/remote-system', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(connectionDetails)
+      });
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to fetch remote system data');
+      }
+      const data = await response.json();
+      setSystemData(data);
+      setLoading(false);
+      setError(null);
+
+      // Update history
+      setCpuHistory(prev => [...prev.slice(-29), parseFloat(data.cpu.usage)]);
+      setMemoryHistory(prev => [...prev.slice(-29), parseFloat(data.memory.usagePercent)]);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Unknown error');
+      setLoading(false);
+    }
+  };
+
+  const handleConnect = () => {
+    setIsRemote(true);
+    setShowConnectionForm(false);
+    setLoading(true);
+    setError(null);
+  };
 
   useEffect(() => {
     const fetchSystemData = async () => {
       try {
-        const response = await fetch('/api/system');
-        if (!response.ok) throw new Error('Failed to fetch system data');
-        const data = await response.json();
-        setSystemData(data);
-        setLoading(false);
-        setError(null);
+        if (isRemote) {
+          await fetchRemoteSystemData();
+        } else {
+          const response = await fetch('/api/system');
+          if (!response.ok) throw new Error('Failed to fetch system data');
+          const data = await response.json();
+          setSystemData(data);
+          setLoading(false);
+          setError(null);
 
-        // Update history
-        setCpuHistory(prev => [...prev.slice(-29), parseFloat(data.cpu.usage)]);
-        setMemoryHistory(prev => [...prev.slice(-29), parseFloat(data.memory.usagePercent)]);
+          // Update history
+          setCpuHistory(prev => [...prev.slice(-29), parseFloat(data.cpu.usage)]);
+          setMemoryHistory(prev => [...prev.slice(-29), parseFloat(data.memory.usagePercent)]);
+        }
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Unknown error');
         setLoading(false);
       }
     };
 
-    fetchSystemData();
-    const interval = setInterval(fetchSystemData, 2000); // Update every 2 seconds
-
-    return () => clearInterval(interval);
-  }, []);
+    if (!showConnectionForm) {
+      fetchSystemData();
+      const interval = setInterval(fetchSystemData, 2000);
+      return () => clearInterval(interval);
+    }
+  }, [isRemote, showConnectionForm]);
 
   const formatUptime = (seconds: number) => {
     const days = Math.floor(seconds / 86400);
@@ -158,6 +218,99 @@ export default function SystemMonitor() {
     );
   };
 
+  if (showConnectionForm) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 flex items-center justify-center p-4">
+        <div className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-2xl p-8 shadow-2xl border border-slate-700 max-w-md w-full">
+          <h2 className="text-3xl font-bold text-white mb-6 text-center">Connect to Remote VM</h2>
+          <div className="space-y-4">
+            <div>
+              <label className="block text-slate-400 text-sm font-medium mb-2">Host IP/Domain</label>
+              <input
+                type="text"
+                value={connectionDetails.host}
+                onChange={(e) => setConnectionDetails({ ...connectionDetails, host: e.target.value })}
+                className="w-full bg-slate-700 text-white rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                placeholder="192.168.1.100"
+              />
+            </div>
+            <div>
+              <label className="block text-slate-400 text-sm font-medium mb-2">Port</label>
+              <input
+                type="text"
+                value={connectionDetails.port}
+                onChange={(e) => setConnectionDetails({ ...connectionDetails, port: e.target.value })}
+                className="w-full bg-slate-700 text-white rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                placeholder="22"
+              />
+            </div>
+            <div>
+              <label className="block text-slate-400 text-sm font-medium mb-2">Username</label>
+              <input
+                type="text"
+                value={connectionDetails.username}
+                onChange={(e) => setConnectionDetails({ ...connectionDetails, username: e.target.value })}
+                className="w-full bg-slate-700 text-white rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                placeholder="root"
+              />
+            </div>
+            <div>
+              <label className="block text-slate-400 text-sm font-medium mb-2">Private Key File</label>
+              <div className="relative">
+                <input
+                  type="file"
+                  accept=".pem,.key,.ppk,*"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) {
+                      const reader = new FileReader();
+                      reader.onload = (event) => {
+                        const privateKey = event.target?.result as string;
+                        setConnectionDetails({ ...connectionDetails, privateKey });
+                      };
+                      reader.readAsText(file);
+                    }
+                  }}
+                  className="w-full bg-slate-700 text-white rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-cyan-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-cyan-500 file:text-white hover:file:bg-cyan-600 file:cursor-pointer"
+                />
+              </div>
+              {connectionDetails.privateKey && (
+                <p className="text-green-400 text-sm mt-2">✓ Private key loaded</p>
+              )}
+            </div>
+            <div>
+              <label className="block text-slate-400 text-sm font-medium mb-2">Passphrase (if key is encrypted)</label>
+              <input
+                type="password"
+                value={connectionDetails.passphrase}
+                onChange={(e) => setConnectionDetails({ ...connectionDetails, passphrase: e.target.value })}
+                className="w-full bg-slate-700 text-white rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                placeholder="Enter passphrase for encrypted key"
+              />
+            </div>
+            <div className="flex gap-3 pt-4">
+              <button
+                onClick={handleConnect}
+                className="flex-1 bg-gradient-to-r from-cyan-500 to-blue-600 text-white font-semibold py-3 rounded-lg hover:shadow-lg hover:shadow-cyan-500/50 transition-all"
+              >
+                Connect
+              </button>
+              <button
+                onClick={() => {
+                  setShowConnectionForm(false);
+                  setIsRemote(false);
+                }}
+                className="flex-1 bg-slate-700 text-white font-semibold py-3 rounded-lg hover:bg-slate-600 transition-all"
+              >
+                Local System
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 flex items-center justify-center">
@@ -187,14 +340,29 @@ export default function SystemMonitor() {
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="mb-8">
-          <div className="flex items-center gap-4 mb-2">
-            <div className="p-3 bg-gradient-to-br from-cyan-500 to-blue-600 rounded-2xl shadow-lg shadow-cyan-500/20">
-              <Activity className="w-8 h-8 text-white" />
+          <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center gap-4">
+              <div className="p-3 bg-gradient-to-br from-cyan-500 to-blue-600 rounded-2xl shadow-lg shadow-cyan-500/20">
+                <Activity className="w-8 h-8 text-white" />
+              </div>
+              <div>
+                <h1 className="text-4xl font-bold text-white mb-1">System Performance Monitor</h1>
+                <p className="text-slate-400">
+                  {isRemote ? `Remote: ${systemData.system.hostname} (${connectionDetails.host})` : `Local: ${systemData.system.hostname}`}
+                </p>
+              </div>
             </div>
-            <div>
-              <h1 className="text-4xl font-bold text-white mb-1">System Performance Monitor</h1>
-              <p className="text-slate-400">Real-time system metrics - {systemData.system.hostname}</p>
-            </div>
+            <button
+              onClick={() => {
+                setShowConnectionForm(true);
+                setSystemData(null);
+                setCpuHistory([]);
+                setMemoryHistory([]);
+              }}
+              className="px-6 py-3 bg-gradient-to-r from-cyan-500 to-blue-600 text-white font-semibold rounded-lg hover:shadow-lg hover:shadow-cyan-500/50 transition-all"
+            >
+              {isRemote ? 'Change Connection' : 'Connect to Remote VM'}
+            </button>
           </div>
         </div>
 
@@ -338,6 +506,74 @@ export default function SystemMonitor() {
             </div>
           </div>
         </div>
+
+        {/* Top Processes Table - Like TOP command */}
+        {systemData.processes.list && systemData.processes.list.length > 0 && (
+          <div className="mt-6 bg-gradient-to-br from-slate-800 to-slate-900 rounded-2xl p-6 shadow-2xl border border-slate-700">
+            <h3 className="text-xl font-bold text-white flex items-center gap-2 mb-6">
+              <Activity className="w-5 h-5 text-cyan-400" />
+              Top Processes (CPU Usage)
+            </h3>
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b border-slate-700">
+                    <th className="text-left text-slate-400 font-semibold py-3 px-2">USER</th>
+                    <th className="text-left text-slate-400 font-semibold py-3 px-2">PID</th>
+                    <th className="text-right text-slate-400 font-semibold py-3 px-2">CPU%</th>
+                    <th className="text-right text-slate-400 font-semibold py-3 px-2">MEM%</th>
+                    <th className="text-right text-slate-400 font-semibold py-3 px-2">RSS</th>
+                    <th className="text-left text-slate-400 font-semibold py-3 px-2">STAT</th>
+                    <th className="text-left text-slate-400 font-semibold py-3 px-2">TIME</th>
+                    <th className="text-left text-slate-400 font-semibold py-3 px-2">COMMAND</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {systemData.processes.list.map((process, index) => (
+                    <tr
+                      key={`${process.pid}-${index}`}
+                      className="border-b border-slate-700/50 hover:bg-slate-700/30 transition-colors"
+                    >
+                      <td className="py-3 px-2 text-cyan-400 font-mono text-sm">{process.user}</td>
+                      <td className="py-3 px-2 text-white font-mono text-sm">{process.pid}</td>
+                      <td className="py-3 px-2 text-right font-mono text-sm">
+                        <span className={`${
+                          process.cpu > 50 ? 'text-red-400' :
+                          process.cpu > 20 ? 'text-yellow-400' :
+                          'text-green-400'
+                        } font-semibold`}>
+                          {process.cpu.toFixed(1)}%
+                        </span>
+                      </td>
+                      <td className="py-3 px-2 text-right font-mono text-sm">
+                        <span className={`${
+                          process.mem > 10 ? 'text-red-400' :
+                          process.mem > 5 ? 'text-yellow-400' :
+                          'text-blue-400'
+                        } font-semibold`}>
+                          {process.mem.toFixed(1)}%
+                        </span>
+                      </td>
+                      <td className="py-3 px-2 text-right text-slate-300 font-mono text-sm">
+                        {(process.rss / 1024).toFixed(0)}M
+                      </td>
+                      <td className="py-3 px-2 text-purple-400 font-mono text-sm">{process.stat}</td>
+                      <td className="py-3 px-2 text-slate-300 font-mono text-sm">{process.time}</td>
+                      <td className="py-3 px-2 text-slate-200 font-mono text-xs truncate max-w-md">
+                        {process.command}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <div className="mt-4 text-slate-500 text-sm flex items-center gap-2">
+              <span className="inline-block w-2 h-2 bg-green-400 rounded-full"></span> Low usage
+              <span className="inline-block w-2 h-2 bg-yellow-400 rounded-full ml-3"></span> Medium usage
+              <span className="inline-block w-2 h-2 bg-red-400 rounded-full ml-3"></span> High usage
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

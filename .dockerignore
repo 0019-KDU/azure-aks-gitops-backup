@@ -1,4 +1,49 @@
+# Dependencies
 node_modules
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Next.js
 .next
-.git
+out
+build
+
+# Testing
+coverage
+.nyc_output
+
+# Environment
+.env
 .env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Git
+.git
+.gitignore
+
+# CI/CD
+.github
+
+# IDE
+.vscode
+.idea
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Docs
+README.md
+DEPLOYMENT.md
+
+# K8s and ArgoCD
+k8s
+argocd
+Dockerfile
+.dockerignore

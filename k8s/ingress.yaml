@@ -1,0 +1,27 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: system-monitor
+  namespace: system-monitor
+  labels:
+    app: system-monitor
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+spec:
+  ingressClassName: nginx
+  tls:
+  - hosts:
+    - system-monitor.yourdomain.com
+    secretName: system-monitor-tls
+  rules:
+  - host: system-monitor.yourdomain.com
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: system-monitor
+            port:
+              number: 80
