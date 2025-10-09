@@ -3,7 +3,6 @@ import { NodeSSH } from 'node-ssh';
 import { writeFileSync, unlinkSync, mkdirSync } from 'fs';
 import { join } from 'path';
 import { tmpdir } from 'os';
-import * as sshpk from 'sshpk';
 
 export async function POST(request: NextRequest) {
   const ssh = new NodeSSH();
@@ -61,48 +60,19 @@ export async function POST(request: NextRequest) {
         .replace(/\r/g, '\n')
         .trim();
 
-      // Check if it's a PPK file and convert to OpenSSH format
+      // Check if it's a PPK file - require manual conversion
       if (processedKey.includes('PuTTY-User-Key-File')) {
-        try {
-          // Try parsing with explicit PPK format
-          let key;
-          try {
-            key = sshpk.parsePrivateKey(processedKey, 'putty', {
-              passphrase: passphrase || undefined
-            });
-          } catch (e) {
-            // If putty format fails, try auto
-            key = sshpk.parsePrivateKey(processedKey, 'auto', {
-              passphrase: passphrase || undefined
-            });
-          }
-
-          // Convert to PEM format (PKCS1 or PKCS8)
-          try {
-            processedKey = key.toString('pkcs1');
-          } catch (e) {
-            // If pkcs1 fails, try pkcs8
-            processedKey = key.toString('pkcs8');
-          }
-        } catch (ppkError: any) {
-
-          // More helpful error message
-          let errorMsg = 'Failed to convert PPK file. ';
-          if (ppkError.message?.includes('encrypted') || ppkError.message?.includes('passphrase')) {
-            errorMsg += 'The key is encrypted. Please provide the correct passphrase.';
-          } else {
-            errorMsg += 'Please manually convert using PuTTYgen:\n';
-            errorMsg += '1. Open PuTTYgen\n';
-            errorMsg += '2. Load your .ppk file\n';
-            errorMsg += '3. Go to Conversions → Export OpenSSH key\n';
-            errorMsg += '4. Save and upload the converted file';
-          }
-
-          return NextResponse.json(
-            { error: errorMsg },
-            { status: 400 }
-          );
-        }
+        return NextResponse.json(
+          {
+            error: 'PPK format detected. Please convert to OpenSSH format:\n\n' +
+                   '1. Open PuTTYgen\n' +
+                   '2. Load your .ppk file\n' +
+                   '3. Go to Conversions → Export OpenSSH key\n' +
+                   '4. Save and upload the converted .pem file\n\n' +
+                   'Or use command: puttygen yourkey.ppk -O private-openssh -o yourkey.pem'
+          },
+          { status: 400 }
+        );
       }
 
       // Create temporary directory if it doesn't exist
