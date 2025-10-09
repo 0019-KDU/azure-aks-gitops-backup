@@ -23,7 +23,7 @@ spec:
     spec:
       containers:
       - name: system-monitor
-        image: chiradev/nextjs-app:main-ded290c
+        image: chiradev/nextjs-app:main-69f6a52
         imagePullPolicy: Always
         ports:
         - name: http
