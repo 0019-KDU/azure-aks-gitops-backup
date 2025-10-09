@@ -5,7 +5,7 @@ metadata:
   labels:
     app: system-monitor
 spec:
-  type: ClusterIP
+  type: LoadBalancer
   selector:
     app: system-monitor
   ports:
@@ -13,4 +13,3 @@ spec:
     port: 80
     targetPort: 3000
     protocol: TCP
-  sessionAffinity: ClientIP
